@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
@@ -74,7 +75,7 @@ namespace regexKSP {
 			loadTextures();
             print("KSCSwitcher initialized");
 		}
-		
+
 		public void OnDestroy() {
             print("KSCSwitcher destroyed");
 		}
@@ -359,8 +360,9 @@ namespace regexKSP {
                 decal.OnSetup();
             }
 
+			// Need to always run start to update the space center's lat/lon and normal
+			SpaceCenter.Instance.StartCoroutine (UpdateSpaceCenter ());
 			if(hasChanged) {
-				SpaceCenter.Instance.Start();  // 1.0.5
 				if(KSC.HasValue("name")) {
 					LastKSC.fetch.Sites.lastSite = LastKSC.fetch.lastSite = KSC.GetValue("name");
                     print("KSCSwitcher changed MapDecal_Tangent");
@@ -368,6 +370,30 @@ namespace regexKSP {
 			}
 
 			return hasChanged;
+		}
+
+		static FieldInfo scLatitude, scLongitude, scAltitude, scSrfNVector;
+		static IEnumerator UpdateSpaceCenter ()
+		{
+			yield return new WaitForFixedUpdate();
+			if (scLatitude == null) {
+				var fields = typeof (SpaceCenter).GetFields (BindingFlags.NonPublic | BindingFlags.Instance);
+				scLatitude = fields[1];
+				scLongitude = fields[2];
+				scAltitude = fields[3];
+				scSrfNVector = fields[4];
+			}
+			SpaceCenter sc = SpaceCenter.Instance;
+			CelestialBody cb = Part.GetComponentUpwards<CelestialBody>(sc.gameObject);
+			Vector3 pos = sc.transform.localPosition;
+			double lat = Math.Atan2 (pos.y, Math.Sqrt (pos.x * pos.x + pos.z * pos.z));
+			double lon = Math.Atan2 (pos.z, pos.x);
+			scLatitude.SetValue (sc, lat * 180 / Math.PI);
+			scLongitude.SetValue (sc, lon * 180 / Math.PI);
+			scAltitude.SetValue (sc, pos.magnitude - cb.Radius);
+			scSrfNVector.SetValue (sc, cb.GetRelSurfaceNVector (lat, lon));
+			Debug.LogFormat("KSCSwitcher {0} {1} {2}", lat, lon, pos.magnitude - cb.Radius);
+			Debug.LogFormat("KSCSwitcher {0} {1} {2} {3} {4}", sc.Latitude, sc.Longitude, sc.transform.position, cb.position, sc.transform.position - cb.position);
 		}
 
 		private void setSite(LaunchSite newSite) {
