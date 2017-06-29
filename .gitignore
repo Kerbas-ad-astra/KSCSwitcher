@@ -7,6 +7,7 @@ UnityEngine.dll
 UnityEngine.UI.dll
 
 # User-specific files
+*.swp
 *.suo
 *.user
 *.userosscache
