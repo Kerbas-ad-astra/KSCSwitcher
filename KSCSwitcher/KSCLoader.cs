@@ -86,7 +86,7 @@ namespace regexKSP {
 			SortedList<string, LaunchSite> siteLocations = new SortedList<string, LaunchSite>();
             double lat, lon, dtmp;
 
-			foreach(ConfigNode site in KSCLoader.instance.Sites.Sites) {
+			foreach(ConfigNode site in LastKSC.fetch.Sites.Sites) {
 				ConfigNode pqsCity = site.GetNode("PQSCity");
 				LaunchSite temp = new LaunchSite();
 				temp.name = site.GetValue("name");
