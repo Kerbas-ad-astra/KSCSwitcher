@@ -59,15 +59,15 @@ namespace regexKSP {
 		public void Start() {
             showWindow = false;
 			scrollPosition = Vector2.zero;
-			siteLocations = LastKSC.fetch.Sites.getSitesGeographicalList();
+			siteLocations = KSCLoader.instance.Sites.getSitesGeographicalList();
 			if(KSCBody == null) {
 				KSCBody = getKSCBody();
 			}
-			if(LastKSC.fetch.Sites.lastSite.Length > 0) {
-				activeSite = LastKSC.fetch.Sites.lastSite;
+			if(KSCLoader.instance.Sites.lastSite.Length > 0) {
+				activeSite = KSCLoader.instance.Sites.lastSite;
 	            print("KSCSwitcher set the active site to the last site of " + activeSite);
-			} else if(LastKSC.fetch.Sites.defaultSite.Length > 0) {
-				activeSite = LastKSC.fetch.Sites.defaultSite;
+			} else if(KSCLoader.instance.Sites.defaultSite.Length > 0) {
+				activeSite = KSCLoader.instance.Sites.defaultSite;
 	            print("KSCSwitcher set the active site to the default site of " + activeSite);
 			} else {
 	            print("KSCSwitcher could not set the active site");
@@ -364,7 +364,7 @@ namespace regexKSP {
 			SpaceCenter.Instance.StartCoroutine (UpdateSpaceCenter ());
 			if(hasChanged) {
 				if(KSC.HasValue("name")) {
-					LastKSC.fetch.Sites.lastSite = LastKSC.fetch.lastSite = KSC.GetValue("name");
+					KSCLoader.instance.Sites.lastSite = LastKSC.fetch.lastSite = KSC.GetValue("name");
                     print("KSCSwitcher changed MapDecal_Tangent");
 				}
 			}
@@ -397,7 +397,7 @@ namespace regexKSP {
 		}
 
 		private void setSite(LaunchSite newSite) {
-			ConfigNode site = LastKSC.fetch.Sites.getSiteByName(newSite.name);
+			ConfigNode site = KSCLoader.instance.Sites.getSiteByName(newSite.name);
             if(site == null) { return; }
 			
 			if(KSCSwitcher.setSite(site)) {

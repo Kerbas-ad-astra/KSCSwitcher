@@ -33,38 +33,27 @@ using System.Linq;
 namespace regexKSP {
 	// Taniwha graciously offered the use of this code/method for saving our settings per save game.
 	// I've changed where appropriate and reformatted because of 1TBS.
-	[KSPScenario(ScenarioCreationOptions.AddToAllGames, new GameScenes[] {
-			GameScenes.SPACECENTER,
-			GameScenes.EDITOR,
-			GameScenes.FLIGHT,
-			GameScenes.TRACKSTATION,
-		})
-	]
 	public class LastKSC : ScenarioModule {
 		public string lastSite = "";
-
-		public KSCSiteManager Sites = new KSCSiteManager();
+		private static LastKSC instance;
 		
-		public static LastKSC fetch { get; private set; }
-
-		public override void OnAwake ()
-		{
-			fetch = this;
-		}
-
-		void OnDestroy ()
-		{
-			fetch = this;
+		public static LastKSC fetch {
+			get {
+				if(instance == null) {
+					Game g = HighLogic.CurrentGame;
+					instance = g.scenarios.Select(s => s.moduleRef).OfType<LastKSC>().SingleOrDefault();
+				}
+				return instance;
+			}
 		}
 		
 		public override void OnLoad(ConfigNode config) {
 			if(config.HasValue("LastLaunchSite")) {
 				lastSite = config.GetValue("LastLaunchSite");
 			}
-			if(!string.IsNullOrEmpty(lastSite)) {
-				Sites.lastSite = lastSite;
+			if(lastSite.Length > 0) {
+				KSCLoader.instance.Sites.lastSite = lastSite;
 			}
-			setSite ();
 /*
 			if(HighLogic.LoadedScene == GameScenes.TRACKSTATION) {
 				KSCSwitcher.activeSite = lastSite;
@@ -76,38 +65,69 @@ namespace regexKSP {
 			config.AddValue("LastLaunchSite", lastSite);
 		}
 
-		void setSite ()
-		{
+		public static void CreateSettings(Game game) {
+			if(!game.scenarios.Any(p=>p.moduleName == typeof(LastKSC).Name)) {
+				ProtoScenarioModule proto = game.AddProtoScenarioModule(typeof (LastKSC), GameScenes.TRACKSTATION);
+				proto.Load(ScenarioRunner.Instance);
+			}
+		}
+	}
+
+	public class KSCLoader {
+		public static KSCLoader instance = null;
+		public KSCSiteManager Sites = new KSCSiteManager();
+
+		void onGameStateCreated(Game game) {
+			LastKSC.CreateSettings(game);
 			bool noSite = false;
 			if(HighLogic.LoadedScene == GameScenes.SPACECENTER) {
-				if(lastSite.Length > 0) {
-					// found a site, load it
-					ConfigNode site = Sites.getSiteByName(lastSite);
-					if(site == null) {
-						lastSite = Sites.defaultSite;
-						noSite = true;
-					} else {
-						KSCSwitcher.setSite(site);
-						Debug.Log("KSCSwitcher set the launch site to " + lastSite);
-						return;
-					}
-				} else {
-					lastSite = Sites.defaultSite;
-					noSite = true;
-				}
-				if(noSite) {
-					if(Sites.defaultSite.Length > 0) {
-						ConfigNode site = Sites.getSiteByName(Sites.defaultSite);
-						if(site == null) {
-							Debug.LogError("KSCSwitcher found a default site name but could not retrieve the site config: " + Sites.defaultSite);
-							return;
+				foreach(ProtoScenarioModule m in HighLogic.CurrentGame.scenarios) {
+					if(m.moduleName == "LastKSC") {
+						LastKSC l = (LastKSC) m.Load(ScenarioRunner.Instance);
+						if(l.lastSite.Length > 0) {
+							// found a site, load it
+							ConfigNode site = Sites.getSiteByName(l.lastSite);
+				            if(site == null) {
+								l.lastSite = Sites.defaultSite;
+								noSite = true;
+							} else {
+								KSCSwitcher.setSite(site);
+								Debug.Log("KSCSwitcher set the launch site to " + l.lastSite);
+								return;
+							}
 						} else {
-							KSCSwitcher.setSite(site);
-							Debug.Log("KSCSwitcher set the initial launch site to " + Sites.defaultSite);
+							l.lastSite = Sites.defaultSite;
+							noSite = true;
+						}
+						if(noSite) {
+							if(Sites.defaultSite.Length > 0) {
+								ConfigNode site = Sites.getSiteByName(Sites.defaultSite);
+					            if(site == null) {
+									Debug.LogError("KSCSwitcher found a default site name but could not retrieve the site config: " + Sites.defaultSite);
+									return;
+								} else {
+									KSCSwitcher.setSite(site);
+									Debug.Log("KSCSwitcher set the initial launch site to " + Sites.defaultSite);
+								}
+							}
 						}
 					}
 				}
 			}
+		}
+
+		public KSCLoader() {
+			GameEvents.onGameStateCreated.Add(onGameStateCreated);
+		}
+	}
+
+	[KSPAddon(KSPAddon.Startup.MainMenu, false)]
+	public class ScenarioSpawn : MonoBehaviour {
+		void Start() {
+            if((object)(KSCLoader.instance) == null) {
+                KSCLoader.instance = new KSCLoader();
+			}
+            enabled = false;
 		}
 	}
 }
